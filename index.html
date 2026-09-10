@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RED BULL // BEAT RHYTHM STAGE</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background-color: #030406;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            font-family: 'Arial', sans-serif;
+        }
+
+        /* 3D Perspective Track */
+        .track-container {
+            perspective: 450px;
+        }
+
+        .track-lane {
+            transform: rotateX(38deg);
+            transform-origin: bottom center;
+            transition: all 0.4s ease;
+        }
+
+        .hit-line {
+            box-shadow: 0 0 20px #FFCC00, 0 0 40px #DC0714;
+        }
+
+        .logo-glow {
+            filter: drop-shadow(0 0 8px #FFCC00) drop-shadow(0 0 12px #DC0714);
+        }
+
+        /* Logo ăn mừng ở màn thắng */
+        .logo-celebrate {
+            animation: logoCelebrate 1.6s ease-in-out infinite;
+        }
+
+        @keyframes logoCelebrate {
+            0%, 100% { transform: scale(1) rotate(-2deg); }
+            50%      { transform: scale(1.08) rotate(2deg); }
+        }
+
+        /* Arcade Pop Text Anim */
+        .pop-judgement {
+            animation: popText 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+
+        @keyframes popText {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.3); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* ===== STAGE LIGHTS: chùm sáng hình nón, gốc cố định trên cao, đầu chùm quét qua lại ===== */
+        #stage-lights {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 1; /* nằm dưới track (z-10) nên không đè lên vùng chơi */
+        }
+
+        /* lớp ngoài: chỉ lo việc xoay quanh gốc đèn */
+        .beam {
+            position: absolute;
+            top: -1vh;
+            width: 44vh;
+            height: 150vh;
+            transform-origin: 50% 0;
+            will-change: transform;
+        }
+
+        /* lớp trong: lo phần ánh sáng, nhấp nháy độc lập với nhịp quét */
+        .beam > i {
+            display: block;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            /* nón: hẹp ở gốc đèn, loe rộng dần xuống dưới */
+            clip-path: polygon(47.5% 0, 52.5% 0, 100% 100%, 0% 100%);
+            filter: blur(16px);
+            mix-blend-mode: screen;
+            /* mép chùm nhòe dần sang hai bên: sáng nhất ở lõi, tan ra ở rìa */
+            -webkit-mask-image: linear-gradient(to right,
+                transparent 0%,
+                rgba(0, 0, 0, 0.25) 18%,
+                rgba(0, 0, 0, 0.85) 42%,
+                #000 50%,
+                rgba(0, 0, 0, 0.85) 58%,
+                rgba(0, 0, 0, 0.25) 82%,
+                transparent 100%);
+            mask-image: linear-gradient(to right,
+                transparent 0%,
+                rgba(0, 0, 0, 0.25) 18%,
+                rgba(0, 0, 0, 0.85) 42%,
+                #000 50%,
+                rgba(0, 0, 0, 0.85) 58%,
+                rgba(0, 0, 0, 0.25) 82%,
+                transparent 100%);
+        }
+
+        /* ánh sáng đặc ở gần đèn rồi loãng dần do tán trong không khí */
+        .beam-yellow {
+            background: linear-gradient(to bottom,
+                rgba(255, 214, 92, 0.42) 0%,
+                rgba(255, 204, 0, 0.20) 25%,
+                rgba(255, 190, 0, 0.09) 55%,
+                rgba(255, 180, 0, 0.03) 78%,
+                transparent 95%);
+        }
+
+        .beam-red {
+            background: linear-gradient(to bottom,
+                rgba(255, 90, 80, 0.40) 0%,
+                rgba(230, 30, 40, 0.19) 25%,
+                rgba(210, 10, 20, 0.08) 55%,
+                rgba(190, 10, 20, 0.03) 78%,
+                transparent 95%);
+        }
+
+        /* gốc đèn: 2 bên trái/phải, mỗi bên 2 đèn 2 màu, chu kỳ lệch nhau cho tự nhiên */
+        .beam-l1 { left: 10%; animation: swingL1 5.3s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+        .beam-l2 { left: 16%; animation: swingL2 7.1s cubic-bezier(0.45, 0, 0.55, 1) infinite -1.8s; }
+        .beam-r1 { left: 90%; animation: swingR1 6.2s cubic-bezier(0.45, 0, 0.55, 1) infinite -3.1s; }
+        .beam-r2 { left: 84%; animation: swingR2 8.4s cubic-bezier(0.45, 0, 0.55, 1) infinite -0.7s; }
+
+        .beam-l1 > i { animation: flickerA 2.7s ease-in-out infinite; }
+        .beam-l2 > i { animation: flickerB 3.9s ease-in-out infinite -1.2s; }
+        .beam-r1 > i { animation: flickerB 3.3s ease-in-out infinite -2.4s; }
+        .beam-r2 > i { animation: flickerA 4.6s ease-in-out infinite -0.5s; }
+
+        /* đèn trái chiếu chéo sang phải, đèn phải chiếu chéo sang trái -> giao nhau ở giữa
+           có dừng nhẹ ở hai đầu và hơi vượt đà, giống đầu đèn cơ khí */
+        @keyframes swingL1 {
+            0%   { transform: translateX(-50%) rotate(13deg); }
+            8%   { transform: translateX(-50%) rotate(13deg); }
+            44%  { transform: translateX(-50%) rotate(48deg); }
+            50%  { transform: translateX(-50%) rotate(45deg); }
+            58%  { transform: translateX(-50%) rotate(45deg); }
+            94%  { transform: translateX(-50%) rotate(13deg); }
+            100% { transform: translateX(-50%) rotate(13deg); }
+        }
+        @keyframes swingL2 {
+            0%   { transform: translateX(-50%) rotate(41deg); }
+            6%   { transform: translateX(-50%) rotate(41deg); }
+            46%  { transform: translateX(-50%) rotate(5deg); }
+            54%  { transform: translateX(-50%) rotate(8deg); }
+            60%  { transform: translateX(-50%) rotate(8deg); }
+            96%  { transform: translateX(-50%) rotate(41deg); }
+            100% { transform: translateX(-50%) rotate(41deg); }
+        }
+        @keyframes swingR1 {
+            0%   { transform: translateX(-50%) rotate(-13deg); }
+            8%   { transform: translateX(-50%) rotate(-13deg); }
+            44%  { transform: translateX(-50%) rotate(-49deg); }
+            50%  { transform: translateX(-50%) rotate(-46deg); }
+            58%  { transform: translateX(-50%) rotate(-46deg); }
+            94%  { transform: translateX(-50%) rotate(-13deg); }
+            100% { transform: translateX(-50%) rotate(-13deg); }
+        }
+        @keyframes swingR2 {
+            0%   { transform: translateX(-50%) rotate(-40deg); }
+            6%   { transform: translateX(-50%) rotate(-40deg); }
+            46%  { transform: translateX(-50%) rotate(-6deg); }
+            54%  { transform: translateX(-50%) rotate(-9deg); }
+            60%  { transform: translateX(-50%) rotate(-9deg); }
+            96%  { transform: translateX(-50%) rotate(-40deg); }
+            100% { transform: translateX(-50%) rotate(-40deg); }
+        }
+
+        /* dao động cường độ nhẹ để ánh sáng không bị phẳng */
+        @keyframes flickerA {
+            0%   { opacity: 0.82; }
+            30%  { opacity: 1; }
+            48%  { opacity: 0.9; }
+            70%  { opacity: 0.72; }
+            100% { opacity: 0.82; }
+        }
+        @keyframes flickerB {
+            0%   { opacity: 0.95; }
+            25%  { opacity: 0.74; }
+            55%  { opacity: 1; }
+            80%  { opacity: 0.85; }
+            100% { opacity: 0.95; }
+        }
+
+        /* bóng đèn phát sáng tại gốc chùm */
+        .lamp {
+            position: absolute;
+            top: -6px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            transform: translateX(-50%);
+        }
+        .lamp-l1 { left: 10%; background: #FFCC00; box-shadow: 0 0 14px 5px rgba(255,204,0,0.7); }
+        .lamp-l2 { left: 16%; background: #DC0714; box-shadow: 0 0 14px 5px rgba(220,7,20,0.7); }
+        .lamp-r1 { left: 90%; background: #DC0714; box-shadow: 0 0 14px 5px rgba(220,7,20,0.7); }
+        .lamp-r2 { left: 84%; background: #FFCC00; box-shadow: 0 0 14px 5px rgba(255,204,0,0.7); }
+
+        /* Khi ăn note: đèn bùng sáng rồi trở lại */
+        #stage-lights.lights-boost .beam > i {
+            filter: blur(14px) brightness(1.35);
+            opacity: 1;
+        }
+        #stage-lights.lights-boost .lamp {
+            transform: translateX(-50%) scale(1.35);
+        }
+        .lamp { transition: transform 0.12s ease-out; }
+    </style>
+</head>
+<body class="min-h-screen bg-[#030406] text-white flex flex-col justify-between items-center relative overflow-hidden">
+
+    <!-- Background Canvas Layer -->
+    <canvas id="stage-canvas" class="absolute inset-0 z-0 pointer-events-none"></canvas>
+
+    <!-- Stage Lights: 4 chùm sáng gốc cố định, đầu chùm quét qua lại chéo nhau -->
+    <div id="stage-lights">
+        <div class="beam beam-l1"><i class="beam-yellow"></i></div>
+        <div class="beam beam-l2"><i class="beam-red"></i></div>
+        <div class="beam beam-r1"><i class="beam-red"></i></div>
+        <div class="beam beam-r2"><i class="beam-yellow"></i></div>
+        <div class="lamp lamp-l1"></div>
+        <div class="lamp lamp-l2"></div>
+        <div class="lamp lamp-r1"></div>
+        <div class="lamp lamp-r2"></div>
+    </div>
+
+    <!-- Sponsor watermark trong lúc chơi -->
+    <div class="fixed bottom-3 left-1/2 -translate-x-1/2 z-[2] flex items-center gap-2 opacity-25 pointer-events-none">
+        <div class="w-9 h-6" data-rb-logo></div>
+        <span class="text-[8px] font-extrabold tracking-[0.25em] text-white uppercase">Red Bull Stage</span>
+    </div>
+
+    <!-- TOP HUD: SCORE & BEST SCORE -->
+    <header class="z-20 w-full max-w-md p-4 flex justify-between items-center pointer-events-none">
+        <div>
+            <div class="text-[9px] text-gray-500 font-extrabold tracking-widest uppercase">SCORE</div>
+            <div id="score-text" class="text-4xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-600">0</div>
+        </div>
+
+        <div class="text-center relative">
+            <div id="combo-display" class="text-xl font-black italic text-yellow-400 opacity-0 transition-opacity drop-shadow-[0_0_10px_#FFCC00]">COMBO x2</div>
+            <div id="judgement-text" class="text-sm font-black tracking-widest text-cyan-400 h-6">READY</div>
+        </div>
+
+        <div class="text-right">
+            <div class="text-[9px] text-yellow-500 font-extrabold tracking-widest uppercase">// BEST</div>
+            <div id="best-score-text" class="text-3xl font-black italic text-yellow-400 font-mono">0</div>
+        </div>
+    </header>
+
+    <!-- CENTER DYNAMIC RHYTHM TRACK -->
+    <main class="z-10 relative w-full max-w-md h-[60vh] flex flex-col justify-end track-container my-auto">
+        
+        <!-- Track Box (Lanes container) -->
+        <div id="track-box" class="track-lane w-full h-full bg-gradient-to-b from-transparent via-neutral-900/80 to-red-950/50 border-x-2 border-red-600/40 relative overflow-hidden flex">
+            <!-- Target Hit Line -->
+            <div class="absolute bottom-6 left-0 right-0 h-3 bg-gradient-to-r from-yellow-400 via-red-600 to-yellow-400 hit-line z-20 pointer-events-none"></div>
+        </div>
+
+        <!-- Dynamic Touch Control Buttons Below Lanes -->
+        <div id="buttons-container" class="w-full flex gap-1.5 mt-2 z-20 px-1">
+            <!-- Dynamic Buttons Generated By JS -->
+        </div>
+
+    </main>
+
+    <!-- OVERLAYS -->
+    <!-- Start Screen -->
+    <div id="start-modal" class="z-30 fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-neutral-900 border-2 border-yellow-400 rounded-2xl p-6 max-w-xs w-full text-center space-y-5 shadow-[0_0_30px_rgba(255,204,0,0.3)]">
+            <div class="w-28 h-16 mx-auto animate-bounce logo-glow" data-rb-logo></div>
+            <h1 class="text-2xl font-black italic tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-600">
+                BEAT RHYTHM
+            </h1>
+            <div class="text-xs text-yellow-400 font-mono">BEST SCORE: <span id="start-best-score">0</span></div>
+            <button onclick="startGame()" class="w-full bg-gradient-to-r from-red-600 to-red-800 text-white font-black py-4 rounded-xl uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border border-yellow-400/50">
+                PLAY STAGE ⚡
+            </button>
+            <div class="flex items-center justify-center gap-2">
+                <div class="w-8 h-5 opacity-70" data-rb-logo></div>
+                <span class="text-[9px] font-extrabold tracking-[0.2em] text-gray-500 uppercase">Red Bull</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Win Screen (Hiển thị khi đạt 100 PTS) -->
+    <div id="win-modal" class="hidden z-30 fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
+        <div class="bg-neutral-900 border-2 border-yellow-400 rounded-2xl p-6 max-w-xs w-full text-center space-y-4 shadow-[0_0_50px_rgba(255,204,0,0.5)]">
+            <div id="win-record-tag" class="hidden text-xs font-black tracking-widest text-yellow-400 bg-red-600/80 py-1 px-3 rounded-full animate-pulse">🎉 NEW BEST RECORD!</div>
+
+            <!-- Sponsor logo -->
+            <div class="w-32 h-20 mx-auto logo-glow logo-celebrate" data-rb-logo></div>
+
+            <div class="text-3xl font-black italic text-yellow-400 drop-shadow-[0_0_20px_#FFCC00]">YOU WIN!</div>
+
+            <!-- Score plate -->
+            <div class="relative bg-black/60 border border-yellow-400/40 rounded-xl py-3 px-4">
+                <div id="win-final-score" class="text-2xl font-black text-white font-mono">SCORE: 100</div>
+            </div>
+
+            <button onclick="startGame()" class="w-full bg-yellow-400 text-black font-black py-4 rounded-xl text-xs uppercase tracking-widest hover:bg-yellow-300 active:scale-95 transition-all shadow-[0_0_15px_#FFCC00]">
+                PLAY AGAIN
+            </button>
+
+            <div class="flex items-center justify-center gap-2 pt-1">
+                <div class="w-8 h-5 opacity-70" data-rb-logo></div>
+                <span class="text-[9px] font-extrabold tracking-[0.2em] text-gray-500 uppercase">Red Bull</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Try Again Screen (Thay thế cho Game Over / Failed) -->
+    <div id="lose-modal" class="hidden z-30 fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
+        <div id="lose-box" class="bg-neutral-900 border-2 border-red-600 rounded-2xl p-6 max-w-xs w-full text-center space-y-4 shadow-[0_0_50px_rgba(220,7,20,0.5)]">
+            <!-- Sponsor logo -->
+            <div class="w-28 h-16 mx-auto logo-glow" data-rb-logo></div>
+
+            <div id="lose-title" class="text-4xl font-black italic text-red-500 tracking-wider">TRY AGAIN</div>
+
+            <div class="relative bg-black/60 border border-red-600/40 rounded-xl py-3 px-4">
+                <div id="lose-score-text" class="text-lg font-bold text-white font-mono">SCORE: 0</div>
+            </div>
+
+            <button id="lose-retry-btn" onclick="startGame()" class="w-full bg-red-600 text-white font-black py-4 rounded-xl text-xs uppercase tracking-widest hover:bg-red-500 active:scale-95 transition-all">
+                RETRY ⚡
+            </button>
+
+            <div class="flex items-center justify-center gap-2 pt-1">
+                <div class="w-8 h-5 opacity-70" data-rb-logo></div>
+                <span class="text-[9px] font-extrabold tracking-[0.2em] text-gray-500 uppercase">Red Bull</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('stage-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Sound Synthesizer
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playBeatSound(pitch = 1) {
+            initAudio();
+            const now = audioCtx.currentTime;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(280 * pitch, now);
+            osc.frequency.exponentialRampToValueAtTime(70 * pitch, now + 0.1);
+
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        }
+
+        // High Score System
+        let bestScore = parseInt(localStorage.getItem('redbull_shock_best')) || 0;
+        document.getElementById('best-score-text').innerText = bestScore;
+        document.getElementById('start-best-score').innerText = bestScore;
+
+        // Game Config & Dynamics
+        let score = 0;
+        let combo = 0;
+        let misses = 0;
+        let currentLanes = 3;
+        let noteSpeed = 1.8;
+        let spawnDelay = 550;
+        let gameActive = false;
+        let notes = [];
+        let particles = [];
+        let shockwaves = [];
+        let gridOffsetY = 0;
+        let spawnInterval = null;
+
+        const keyLabels = [
+            ['[1]', '[2]', '[3]'],
+            ['[1]', '[2]', '[3]', '[4]'],
+            ['[1]', '[2]', '[3]', '[4]', '[5]']
+        ];
+
+        const rbLogoShapes = `
+            <circle cx="50" cy="30" r="18" fill="#FFCC00" />
+            <path d="M 10 32 L 40 22 L 36 40 Z" fill="#DC0714" stroke="#FFCC00" stroke-width="1.5"/>
+            <path d="M 90 32 L 60 22 L 64 40 Z" fill="#DC0714" stroke="#FFCC00" stroke-width="1.5"/>
+        `;
+
+        // dùng cho note trên track (có glow)
+        const redbullOfficialLogoSvg = `
+            <svg viewBox="0 0 100 60" class="w-full h-full logo-glow">${rbLogoShapes}</svg>
+        `;
+
+        // bơm logo vào mọi chỗ đánh dấu data-rb-logo (modal, watermark, score plate)
+        document.querySelectorAll('[data-rb-logo]').forEach(el => {
+            el.innerHTML = `<svg viewBox="0 0 100 60" class="w-full h-full">${rbLogoShapes}</svg>`;
+        });
+
+        function renderLanes(laneCount) {
+            currentLanes = laneCount;
+            const trackBox = document.getElementById('track-box');
+            const btnContainer = document.getElementById('buttons-container');
+
+            trackBox.querySelectorAll('.lane-divider').forEach(el => el.remove());
+            for (let i = 0; i < laneCount - 1; i++) {
+                const divider = document.createElement('div');
+                divider.className = 'lane-divider h-full border-r border-yellow-500/20 absolute top-0 bottom-0 pointer-events-none';
+                divider.style.left = `${(i + 1) * (100 / laneCount)}%`;
+                trackBox.appendChild(divider);
+            }
+
+            btnContainer.innerHTML = '';
+            const labels = keyLabels[laneCount - 3];
+            for (let i = 0; i < laneCount; i++) {
+                const btn = document.createElement('button');
+                btn.id = `btn-lane-${i}`;
+                btn.className = 'flex-1 bg-neutral-900 hover:bg-red-600/50 border-2 border-yellow-400 text-yellow-400 font-black py-3.5 rounded-xl active:scale-95 transition-all text-xs shadow-lg shadow-red-600/30';
+                btn.innerText = labels[i];
+                btn.setAttribute('onpointerdown', `hitLane(${i})`);
+                btnContainer.appendChild(btn);
+            }
+        }
+
+        function startGame() {
+            initAudio();
+            score = 0;
+            combo = 0;
+            misses = 0;
+            currentLanes = 3;
+            noteSpeed = 1.8;
+            spawnDelay = 550;
+            notes = [];
+            particles = [];
+            shockwaves = [];
+            gameActive = true;
+
+            renderLanes(3);
+
+            document.getElementById('score-text').innerText = '0';
+            document.getElementById('judgement-text').innerText = 'START!';
+
+            document.getElementById('start-modal').classList.add('hidden');
+            document.getElementById('win-modal').classList.add('hidden');
+            document.getElementById('lose-modal').classList.add('hidden');
+            document.getElementById('win-record-tag').classList.add('hidden');
+
+            resetSpawnInterval();
+        }
+
+        let lightsBoostTimer = null;
+        function boostLights() {
+            const lights = document.getElementById('stage-lights');
+            lights.classList.add('lights-boost');
+            clearTimeout(lightsBoostTimer);
+            lightsBoostTimer = setTimeout(() => lights.classList.remove('lights-boost'), 130);
+        }
+
+        function showJudgement(text, color) {
+            const el = document.getElementById('judgement-text');
+            el.innerText = text;
+            el.style.color = color;
+            el.classList.remove('pop-judgement');
+            void el.offsetWidth;
+            el.classList.add('pop-judgement');
+        }
+
+        function resetSpawnInterval() {
+            if (spawnInterval) clearInterval(spawnInterval);
+            spawnInterval = setInterval(spawnNote, spawnDelay);
+        }
+
+        function spawnNote() {
+            if (!gameActive) return;
+            const lane = Math.floor(Math.random() * currentLanes);
+            
+            const trackBox = document.getElementById('track-box');
+            const noteEl = document.createElement('div');
+            const laneWidthPercent = 100 / currentLanes;
+            
+            noteEl.className = 'absolute h-10 rounded-lg bg-black/90 border border-yellow-400 z-10 p-0.5 flex items-center justify-center';
+            noteEl.style.width = `${laneWidthPercent - 2}%`;
+            noteEl.style.left = `${lane * laneWidthPercent + 1}%`;
+            noteEl.style.top = '0%';
+            
+            noteEl.innerHTML = redbullOfficialLogoSvg;
+
+            trackBox.appendChild(noteEl);
+
+            notes.push({
+                lane: lane,
+                top: 0,
+                element: noteEl
+            });
+        }
+
+        function hitLane(lane) {
+            if (!gameActive) return;
+
+            const targetNoteIndex = notes.findIndex(n => n.lane === lane && n.top >= 68 && n.top <= 96);
+
+            if (targetNoteIndex !== -1) {
+                const note = notes[targetNoteIndex];
+                note.element.remove();
+                notes.splice(targetNoteIndex, 1);
+
+                score += 1;
+                combo++;
+                playBeatSound(1 + lane * 0.15);
+
+                document.getElementById('score-text').innerText = score;
+                showJudgement('PERFECT!', '#FFCC00');
+
+                const comboEl = document.getElementById('combo-display');
+                comboEl.innerText = `COMBO x${combo}`;
+                comboEl.style.opacity = '1';
+
+                // Tăng làn & tốc độ tự động theo số điểm đạt được
+                if (score === 15 && currentLanes < 4) {
+                    renderLanes(4);
+                    noteSpeed = 2.3;
+                    spawnDelay = 450;
+                    resetSpawnInterval();
+                    showJudgement('SPEED UP! 4 LANES', '#FFCC00');
+                } else if (score === 35 && currentLanes < 5) {
+                    renderLanes(5);
+                    noteSpeed = 2.8;
+                    spawnDelay = 380;
+                    resetSpawnInterval();
+                    showJudgement('OVERDRIVE! 5 LANES', '#DC0714');
+                } else if (score >= 100) {
+                    endGame(true); // Đạt 100 điểm = WIN
+                    return;
+                }
+
+                const targetBtn = document.getElementById(`btn-lane-${lane}`);
+                if (targetBtn) {
+                    const rect = targetBtn.getBoundingClientRect();
+                    const x = rect.left + rect.width / 2;
+                    const y = rect.top + rect.height / 2;
+
+                    createParticles(x, y);
+                    createShockwave(x, y);
+                }
+
+                boostLights();
+            } else {
+                combo = 0;
+                document.getElementById('combo-display').style.opacity = '0';
+                showJudgement('MISS!', '#DC0714');
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '1') hitLane(0);
+            if (e.key === '2') hitLane(1);
+            if (e.key === '3') hitLane(2);
+            if (e.key === '4' && currentLanes >= 4) hitLane(3);
+            if (e.key === '5' && currentLanes >= 5) hitLane(4);
+        });
+
+        function endGame(win) {
+            gameActive = false;
+            clearInterval(spawnInterval);
+
+            notes.forEach(n => n.element.remove());
+            notes = [];
+
+            // Kiểm tra và Cập nhật Kỷ Lục (Best Score) - vô hạn, không cap
+            let isNewBest = false;
+            if (score > bestScore) {
+                bestScore = score;
+                localStorage.setItem('redbull_shock_best', bestScore);
+                document.getElementById('best-score-text').innerText = bestScore;
+                document.getElementById('start-best-score').innerText = bestScore;
+                isNewBest = true;
+            }
+
+            if (win) {
+                // Lúc thắng (100 điểm), luôn hiện STAGE CLEAR! (không phân biệt new best hay không)
+                document.getElementById('win-final-score').innerText = `SCORE: ${score}`;
+                if (isNewBest) {
+                    document.getElementById('win-record-tag').classList.remove('hidden');
+                } else {
+                    document.getElementById('win-record-tag').classList.add('hidden');
+                }
+                document.getElementById('win-modal').classList.remove('hidden');
+                for (let i = 0; i < 6; i++) setTimeout(createFireworkBurst, i * 150);
+            } else {
+                // Lúc thua (missed 5 lần), phân biệt new best vs thua thường
+                const loseTitle = document.getElementById('lose-title');
+                const loseBox = document.getElementById('lose-box');
+                const loseBtn = document.getElementById('lose-retry-btn');
+
+                if (isNewBest) {
+                    loseTitle.innerText = 'NEW BEST SCORE!';
+                    loseTitle.className = 'text-3xl font-black italic text-yellow-400 tracking-wider drop-shadow-[0_0_20px_#FFCC00]';
+                    loseBox.className = 'bg-neutral-900 border-2 border-yellow-400 rounded-2xl p-6 max-w-xs w-full text-center space-y-4 shadow-[0_0_50px_rgba(255,204,0,0.5)]';
+                    loseBtn.className = 'w-full bg-yellow-400 text-black font-black py-4 rounded-xl text-xs uppercase tracking-widest hover:bg-yellow-300 active:scale-95 transition-all shadow-[0_0_15px_#FFCC00]';
+                } else {
+                    loseTitle.innerText = 'TRY AGAIN';
+                    loseTitle.className = 'text-4xl font-black italic text-red-500 tracking-wider';
+                    loseBox.className = 'bg-neutral-900 border-2 border-red-600 rounded-2xl p-6 max-w-xs w-full text-center space-y-4 shadow-[0_0_50px_rgba(220,7,20,0.5)]';
+                    loseBtn.className = 'w-full bg-red-600 text-white font-black py-4 rounded-xl text-xs uppercase tracking-widest hover:bg-red-500 active:scale-95 transition-all';
+                }
+
+                document.getElementById('lose-score-text').innerText = `SCORE: ${score}`;
+                document.getElementById('lose-modal').classList.remove('hidden');
+            }
+        }
+
+        function createParticles(x, y) {
+            const colors = ['#FFCC00', '#DC0714', '#FFFFFF'];
+            for (let i = 0; i < 16; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 9,
+                    vy: (Math.random() - 0.5) * 9,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    alpha: 1,
+                    radius: Math.random() * 3.5 + 1
+                });
+            }
+        }
+
+        function createShockwave(x, y) {
+            shockwaves.push({
+                x, y,
+                radius: 10,
+                maxRadius: 55,
+                alpha: 1,
+                color: '#FFCC00'
+            });
+        }
+
+        function createFireworkBurst() {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * (canvas.height * 0.5);
+            createParticles(x, y);
+            createShockwave(x, y);
+        }
+
+        function animate() {
+            ctx.fillStyle = '#030406';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Cyber Grid Background
+            ctx.strokeStyle = 'rgba(220, 7, 20, 0.12)';
+            ctx.lineWidth = 1;
+
+            gridOffsetY = (gridOffsetY + (gameActive ? noteSpeed * 0.8 : 0.5)) % 40;
+
+            for (let y = gridOffsetY; y < canvas.height; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+
+            if (gameActive) {
+                notes.forEach((note, index) => {
+                    note.top += noteSpeed;
+                    note.element.style.top = `${note.top}%`;
+
+                    if (note.top > 98) {
+                        note.element.remove();
+                        notes.splice(index, 1);
+                        misses++;
+                        combo = 0;
+                        document.getElementById('combo-display').style.opacity = '0';
+                        showJudgement('MISS!', '#DC0714');
+
+                        if (misses >= 5) endGame(false);
+                    }
+                });
+            }
+
+            // Draw Shockwaves
+            shockwaves.forEach((sw, index) => {
+                sw.radius += 3.5;
+                sw.alpha -= 0.04;
+
+                if (sw.alpha <= 0) {
+                    shockwaves.splice(index, 1);
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = sw.alpha;
+                    ctx.strokeStyle = sw.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(sw.x, sw.y, sw.radius, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            });
+
+            // Draw Particles
+            particles.forEach((p, index) => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.025;
+
+                if (p.alpha <= 0) {
+                    particles.splice(index, 1);
+                } else {
+                    ctx.save();
+                    ctx.globalAlpha = p.alpha;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            });
+
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body>
+</html>

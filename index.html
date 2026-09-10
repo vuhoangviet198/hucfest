@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RED BULL // BEAT RHYTHM STAGE</title>
+    <title>HUCBEAT // RED BULL STAGE</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
@@ -234,7 +234,7 @@
     <!-- Sponsor watermark trong lúc chơi -->
     <div class="fixed bottom-3 left-1/2 -translate-x-1/2 z-[2] flex items-center gap-2 opacity-25 pointer-events-none">
         <div class="w-9 h-6" data-rb-logo></div>
-        <span class="text-[8px] font-extrabold tracking-[0.25em] text-white uppercase">Red Bull Stage</span>
+        <span class="text-[8px] font-extrabold tracking-[0.25em] text-white uppercase">HucBeat</span>
     </div>
 
     <!-- TOP HUD: SCORE & BEST SCORE -->
@@ -277,7 +277,7 @@
         <div class="bg-neutral-900 border-2 border-yellow-400 rounded-2xl p-6 max-w-xs w-full text-center space-y-5 shadow-[0_0_30px_rgba(255,204,0,0.3)]">
             <div class="w-28 h-16 mx-auto animate-bounce logo-glow" data-rb-logo></div>
             <h1 class="text-2xl font-black italic tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-600">
-                BEAT RHYTHM
+                HUCBEAT
             </h1>
             <div class="text-xs text-yellow-400 font-mono">BEST SCORE: <span id="start-best-score">0</span></div>
             <button onclick="startGame()" class="w-full bg-gradient-to-r from-red-600 to-red-800 text-white font-black py-4 rounded-xl uppercase tracking-widest text-sm shadow-lg active:scale-95 transition-all border border-yellow-400/50">
@@ -379,7 +379,7 @@
         }
 
         // High Score System
-        let bestScore = parseInt(localStorage.getItem('redbull_shock_best')) || 0;
+        let bestScore = parseInt(localStorage.getItem('hucbeat_best')) || 0;
         document.getElementById('best-score-text').innerText = bestScore;
         document.getElementById('start-best-score').innerText = bestScore;
 
@@ -592,7 +592,7 @@
             let isNewBest = false;
             if (score > bestScore) {
                 bestScore = score;
-                localStorage.setItem('redbull_shock_best', bestScore);
+                localStorage.setItem('hucbeat_best', bestScore);
                 document.getElementById('best-score-text').innerText = bestScore;
                 document.getElementById('start-best-score').innerText = bestScore;
                 isNewBest = true;

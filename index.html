@@ -728,15 +728,21 @@
                     note.top += noteSpeed;
                     note.element.style.top = `${note.top}%`;
 
-                    if (note.top > 98) {
-                        note.element.remove();
-                        notes.splice(index, 1);
+                    // Nếu note trôi qua target line (68-96) mà không được hit, tính là MISS
+                    if (note.top > 96 && !note.missed) {
+                        note.missed = true;
                         misses++;
                         combo = 0;
                         document.getElementById('combo-display').style.opacity = '0';
                         showJudgement('MISS!', '#DC0714');
 
                         if (misses >= 5) endGame(false);
+                    }
+
+                    // Auto-remove note khi nó trôi ra khỏi màn hình hoàn toàn
+                    if (note.top > 110) {
+                        note.element.remove();
+                        notes.splice(index, 1);
                     }
                 });
             }

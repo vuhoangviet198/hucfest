@@ -706,6 +706,29 @@
             createShockwave(x, y);
         }
 
+        // Handle tab focus/blur untuk pause & resume game
+        let wasGameActive = false;
+
+        window.addEventListener('blur', () => {
+            if (gameActive) {
+                wasGameActive = true;
+                gameActive = false;
+                clearInterval(spawnInterval);
+                showJudgement('PAUSED', '#FFCC00');
+            }
+        });
+
+        window.addEventListener('focus', () => {
+            if (wasGameActive) {
+                gameActive = true;
+                wasGameActive = false;
+                initAudio(); // Resume audio context
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                resetSpawnInterval();
+                showJudgement('RESUMED!', '#FFCC00');
+            }
+        });
+
         function animate() {
             ctx.fillStyle = '#030406';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
